@@ -12,6 +12,9 @@ set_io -nowarn pin_usb_det      37    # IOT_36b  - USB_DET, active-high enables 
 # btn_ok - skip bootloader, jump to user bitstream
 set_io -nowarn pin_btn_ok       23    # IOT_37a
 
+# btn_down - stay in bootloader even when not enumerated by host
+set_io -nowarn pin_btn_down     11    # IOB_20a
+
 # LED indicators - three white LEDs
 set_io -nowarn pin_led_index    39    # white_index
 set_io -nowarn pin_led_middle   40    # white_middle

@@ -1,7 +1,7 @@
 {
  "bootmeta": {
   "bootloader": "wenzellabs bare_metal USB bootloader",
-  "bver": "1.0",
+  "bver": "1.1",
   "update": "https://wenzellabs.de/bare_metal",
   "addrmap": {
    "bootloader": "0x000a0-0x20000",

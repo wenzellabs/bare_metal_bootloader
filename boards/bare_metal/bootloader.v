@@ -10,8 +10,13 @@
 //   SB_WARMBOOT S1=0 S0=1 -> boots to slot 1
 //
 // btn_ok bypass:
-//   If btn_ok (active low) is held during the first ~4 ms after config,
+//   If btn_ok (active low) is held at power-on / reset,
 //   we skip USB entirely and warmboot straight to the user image.
+//
+// btn_down stay:
+//   If btn_down (active low) is held at power-on / reset,
+//   the auto-boot timer is disabled - bootloader stays up indefinitely,
+//   useful for programming without a USB host present at power-on.
 //
 // Otherwise we run the TinyFPGA bootloader (USB CDC-ACM + SPI bridge).
 // If no USB host sends SOF within ~16 s, we auto-warmboot to user image.
@@ -27,6 +32,7 @@ module bootloader (
   output pin_usb_det,       // USB_DET (pin 37, IOT_36b) - high enables 1k5 pull-up on D+
 
   input  pin_btn_ok,        // btn_ok, active low with external pull-up
+  input  pin_btn_down,      // btn_down, active low - hold to stay in bootloader
 
   output pin_led_index,     // white LED index  finger (pin 39)
   output pin_led_middle,    // white LED middle finger (pin 40)
@@ -201,14 +207,17 @@ module bootloader (
   // and PLL lock time (~100 µs) already provides a stable sampling point.
   reg bypass_sampled = 0;
   reg bypass_trigger = 0;
+  reg stay_in_bootloader = 0;    // btn_down held at boot -> inhibit autoboot
 
   always @(posedge clk) begin
     if (reset) begin
-      bypass_sampled <= 0;
-      bypass_trigger <= 0;
+      bypass_sampled     <= 0;
+      bypass_trigger     <= 0;
+      stay_in_bootloader <= 0;
     end else if (!bypass_sampled) begin
-      bypass_sampled <= 1;
-      bypass_trigger <= !pin_btn_ok;  // active low: pressed = go to user
+      bypass_sampled     <= 1;
+      bypass_trigger     <= !pin_btn_ok;    // active low: pressed = go to user
+      stay_in_bootloader <= !pin_btn_down;  // active low: pressed = stay in BL
     end
   end
 
@@ -241,8 +250,8 @@ module bootloader (
       if ((spi_cs_prev && !pin_spi_cs) || (!usb_tx_prev && usb_tx_en))
         host_activity <= 1;
 
-      // Count up if no activity has ever been seen
-      if (!host_activity && !autoboot_trigger) begin
+      // Count up if no activity has ever been seen and not held in BL
+      if (!host_activity && !autoboot_trigger && !stay_in_bootloader) begin
         if (autoboot_cnt[23])
           autoboot_trigger <= 1;
         else
