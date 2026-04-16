@@ -75,7 +75,17 @@ def get_port_by_uuid(device, uuid):
 
 
 def check_for_new_bootloader():
-    return []
+    boards_needing_update = []
+    ports = get_ports("1d50:6130")
+
+    for port in ports:
+        with port:
+            p = TinyProg(port)
+            m = p.meta.root
+            if isinstance(m, dict) and u"bootmeta" in m and u"update" in m[u"bootmeta"]:
+                boards_needing_update.append(port)
+
+    return boards_needing_update
 
 
 def check_for_wrong_tinyfpga_bx_vidpid():
