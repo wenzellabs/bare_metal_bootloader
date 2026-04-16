@@ -79,6 +79,33 @@ prog: multiboot.bin
 iceprog: multiboot.bin
 	iceprog $<
 
+# stage_two.bin: slot 0 with valid multiboot header, for OTA update.
+# Written to address 0x0 by tinyprog during stage two of bootloader update.
+# Uses icemulti with TWO images (so the header has a valid slot 1 entry),
+# injects bootmeta, then truncates to 0x20000 (slot 0 boundary).
+stage_two.bin: $(PROJ).bin bootmeta.json
+	cp $(PROJ).bin bootloader_copy.bin
+	icemulti -v -o $@ -a$(ALIGN) -p0 bootloader.bin bootloader_copy.bin
+	python3 -c "\
+import json; \
+d = json.load(open('bootmeta.json')); \
+blob = json.dumps(d, separators=(',',':')).encode(); \
+assert len(blob) <= 4096, f'bootmeta too large: {len(blob)} bytes (max 4096)'; \
+f = open('$@', 'r+b'); \
+f.seek($(META_ADDR)); \
+f.write(b'\\xff' * 4096); \
+f.seek($(META_ADDR)); \
+f.write(blob); \
+f.close(); \
+# truncate to slot 0 boundary - keeps header + bootloader + bootmeta \
+data = open('$@','rb').read()[:0x20000]; \
+# strip trailing 0xff, round up to 256B \
+end = len(data); \
+while end > 0 and data[end-1] == 0xff: end -= 1; \
+end = (end + 255) & ~255; \
+open('$@','wb').write(data[:end]); \
+print(f'  stage_two.bin: {end} bytes (bootmeta at $(META_ADDR))')"
+
 # User address in flash - must match icemulti -a$(ALIGN)
 USER_ADDR = 0x20000
 
@@ -98,7 +125,7 @@ boot:
 
 clean:
 	rm -f $(PROJ).json $(PROJ).asc $(PROJ).rpt $(PROJ).bin
-	rm -f bootloader_copy.bin multiboot.bin
+	rm -f bootloader_copy.bin multiboot.bin stage_two.bin
 
 # production: provision one board via CH341
 # reads serial from next_serial.txt, generates a UUID, writes boardmeta
