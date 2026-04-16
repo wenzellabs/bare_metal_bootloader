@@ -114,14 +114,9 @@ USER_ADDR = 0x20000
 multiboot-user: $(PROJ).bin
 	icemulti -v -o multiboot.bin -a$(ALIGN) -p0 $(PROJ).bin $(USER_BIN)
 
-# Flash user bitstream over USB (bootloader must be active)
-# Usage: make flash-user USER_BIN=path/to/user.bin
-flash-user:
-	python3 tinyprog_user.py -a $(USER_ADDR) $(USER_BIN)
-
 # Just boot to user image (no programming)
 boot:
-	python3 tinyprog_user.py --boot
+	tinyprog --boot
 
 clean:
 	rm -f $(PROJ).json $(PROJ).asc $(PROJ).rpt $(PROJ).bin
