@@ -8,3 +8,6 @@ synlog.tcl
 gerbers/
 build/
 *.pyc
+next_serial.txt
+_boardmeta_prod.json
+bootloader_copy.bin

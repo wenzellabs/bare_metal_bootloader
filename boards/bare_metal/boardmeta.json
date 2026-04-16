@@ -1,0 +1,10 @@
+{
+ "boardmeta":{
+  "name": "bare_metal",
+   "fpga": "ice40up5k-sg48",
+   "hver": "0.1",
+   "serial": 12345,
+   "uuid": "00000000-1111-2222-3333-444444444444",
+   "url": "https://wenzellabs.de/bare_metal"
+ }
+}
