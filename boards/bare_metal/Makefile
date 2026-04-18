@@ -75,10 +75,6 @@ erase:
 prog: multiboot.bin
 	ch341prog -v -w multiboot.bin
 
-# Flash multiboot image via iceprog (if available)
-iceprog: multiboot.bin
-	iceprog $<
-
 # stage_two.bin: slot 0 with valid multiboot header, for OTA update.
 # Written to address 0x0 by tinyprog during stage two of bootloader update.
 # Uses icemulti with TWO images (so the header has a valid slot 1 entry),
@@ -150,4 +146,4 @@ open('_boardmeta_prod.json','w').write(json.dumps(d, separators=(',',':')))" \
 	echo "=== Board $$SERIAL done. Next serial: $$(cat next_serial.txt) ===" && \
 	rm -f _boardmeta_prod.json
 
-.PHONY: all prog iceprog multiboot-user flash-user boot clean erase produce_one_board
+.PHONY: all prog multiboot-user flash-user boot clean erase produce_one_board
