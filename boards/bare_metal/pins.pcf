@@ -20,12 +20,10 @@ set_io -nowarn pin_led_index    39    # white_index
 set_io -nowarn pin_led_middle   40    # white_middle
 set_io -nowarn pin_led_pinky    41    # white_pinky
 
-# SPI configuration flash (dedicated pins - usable as GPIO post-config)
-# Matches ICEBreaker Bitsy (also UP5K-SG48) pin assignments.
-# SB_SPI hard block must be instantiated and disabled to release these pins.
-set_io -nowarn pin_spi_mosi     14    # SPI_SO  (IOB_32a) - MOSI
-set_io -nowarn pin_spi_miso     17    # SPI_SI  (IOB_33b) - MISO
-set_io -nowarn pin_spi_sck      15    # SPI_SCK (IOB_34a)
-set_io -nowarn pin_spi_cs       16    # SPI_SS  (IOB_35b)
-set_io -nowarn pin_spi_wp       18    # IOB_31b - flash /WP   (active low, drive high)
-set_io -nowarn pin_spi_hold     19    # IOB_29b - flash /HOLD (active low, drive high)
+# SPI configuration flash
+set_io -nowarn pin_spi_mosi     14    # IOB_32a - SPI_SO, MOSI
+set_io -nowarn pin_spi_miso     17    # IOB_33b - SPI_SI, MISO
+set_io -nowarn pin_spi_sck      15    # IOB_34a - SPI_SCK
+set_io -nowarn pin_spi_cs       16    # IOB_35b - SPI_SS
+set_io -nowarn pin_spi_wp       18    # IOB_31b - SPI_WPn
+set_io -nowarn pin_spi_hold     19    # IOB_29b - SPI_HOLDn
