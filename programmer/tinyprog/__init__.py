@@ -274,6 +274,15 @@ class TinyMeta(object):
         return self._get_addr_range(u"userdata")
 
     def _get_addr_range(self, name):
+        # If we couldn't read metadata, present a clear error instead of
+        # raising an AttributeError when trying to access self.root.
+        if self.root is None:
+            raise Exception(
+                "Missing device metadata (flash reads returned no metadata). "
+                "Either specify the target address with -a/--addr, fix the "
+                "bootloader/flash state, or use a programmer that can access "
+                "the chip directly.")
+
         # get the bootmeta's addrmap or fallback to the root's addrmap.
         addr_map = self.root.get(u"bootmeta", {}).get(
             u"addrmap", self.root.get(u"addrmap", None))
