@@ -60,8 +60,11 @@ def strict_query_user(question):
         return valid.get(choice, False)
 
 
-def get_port_by_uuid(device, uuid):
+def get_port_by_uuid(device, uuid, verbose=False):
     ports = get_ports(device) + get_ports("1209:2100")
+    if verbose and ports:
+        sys.stdout.write("[ports: %s]" % ", ".join(str(p) for p in ports))
+        sys.stdout.flush()
     for port in ports:
         try:
             with port:
@@ -69,8 +72,10 @@ def get_port_by_uuid(device, uuid):
                 if p.meta.uuid().startswith(uuid):
                     return port
 
-        except Exception:
-            pass
+        except Exception as e:
+            if verbose:
+                sys.stdout.write("[%s: %s]" % (port, e))
+                sys.stdout.flush()
     return None
 
 
@@ -182,14 +187,22 @@ def perform_bootloader_update(port):
 
     new_port = None
 
-    for x in range(20):
-        time.sleep(1)
+    for x in range(40):
+        time.sleep(0.5)
         sys.stdout.write(".")
         sys.stdout.flush()
+
+        # Look for the board by UUID.  Stage one should present
+        # readable metadata now that the SB_SPI issue is fixed, so
+        # prefer the higher-level lookup that matches the UUID.
         new_port = get_port_by_uuid("1d50:6130", uuid)
         if new_port is not None:
             print("connected!")
             break
+
+    if new_port is None:
+        print("\n    Failed to find stage one bootloader.")
+        return False
 
     with new_port:
         p = TinyProg(new_port)
@@ -322,6 +335,8 @@ try using libusb to connect to boards without a serial driver attached"""
                 with port:
                     p = TinyProg(port)
                     m = p.meta.root
+                    if m is None:
+                        m = {"error": "no metadata found"}
                     m["port"] = str(port)
                     meta.append(m)
             print(json.dumps(meta, indent=2))
