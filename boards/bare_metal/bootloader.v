@@ -38,9 +38,9 @@ module bootloader (
   output pin_led_middle,    // white LED middle finger (pin 40)
   output pin_led_pinky,     // white LED pinky  finger (pin 41)
 
-  inout  pin_spi_miso,      // SPI flash MISO (dedicated pin 17) - needs SB_IO on UP5K
+  input  pin_spi_miso,      // SPI flash MISO (dedicated pin 17)
   output pin_spi_cs,        // SPI flash CS   (dedicated pin 16)
-  inout  pin_spi_mosi,      // SPI flash MOSI (dedicated pin 14) - needs SB_IO on UP5K
+  output pin_spi_mosi,      // SPI flash MOSI (dedicated pin 14)
   output pin_spi_sck,       // SPI flash SCK  (dedicated pin 15)
 
   output pin_spi_wp,        // SPI flash /WP   (pin 18, IOB_31b) - drive high to disable write-protect
@@ -48,98 +48,12 @@ module bootloader (
 );
 
   // ============================================================================
-  // SB_SPI hard IP - instantiate and disable to release dedicated SPI pins
+  // Dedicated SPI pins (14-17) on UP5K
   // ============================================================================
-  // The iCE40 UP5K has a hardened SPI block (SB_SPI) physically connected to
-  // pins 14/15/16/17. Even without instantiation, its output enables may
-  // default active and cause bus contention with our soft SPI master.
-  // We instantiate it here with all active signals tied off so its output
-  // enables are deasserted, freeing the pins for GPIO use.
-  wire spi_hard_so, spi_hard_soe;
-  wire spi_hard_mo, spi_hard_moe;
-  wire spi_hard_scko, spi_hard_sckoe;
-  wire spi_hard_mcsno0, spi_hard_mcsnoe0;
-
-  SB_SPI #(
-    .BUS_ADDR74 ("0b0000")
-  ) spi_hard_ip (
-    .SBCLKI     (1'b0),
-    .SBRWI      (1'b0),
-    .SBSTBI     (1'b0),
-    .SBADRI7    (1'b0),
-    .SBADRI6    (1'b0),
-    .SBADRI5    (1'b0),
-    .SBADRI4    (1'b0),
-    .SBADRI3    (1'b0),
-    .SBADRI2    (1'b0),
-    .SBADRI1    (1'b0),
-    .SBADRI0    (1'b0),
-    .SBDATI7    (1'b0),
-    .SBDATI6    (1'b0),
-    .SBDATI5    (1'b0),
-    .SBDATI4    (1'b0),
-    .SBDATI3    (1'b0),
-    .SBDATI2    (1'b0),
-    .SBDATI1    (1'b0),
-    .SBDATI0    (1'b0),
-    .MI         (1'b0),
-    .SI         (1'b0),
-    .SCKI       (1'b0),
-    .SCSNI      (1'b1),     // chip select active low - deassert
-    .SO         (spi_hard_so),
-    .SOE        (spi_hard_soe),
-    .MO         (spi_hard_mo),
-    .MOE        (spi_hard_moe),
-    .SCKO       (spi_hard_scko),
-    .SCKOE      (spi_hard_sckoe),
-    .MCSNO3     (),
-    .MCSNO2     (),
-    .MCSNO1     (),
-    .MCSNO0     (spi_hard_mcsno0),
-    .MCSNOE3    (),
-    .MCSNOE2    (),
-    .MCSNOE1    (),
-    .MCSNOE0    (spi_hard_mcsnoe0),
-    .SBDATO7    (),
-    .SBDATO6    (),
-    .SBDATO5    (),
-    .SBDATO4    (),
-    .SBDATO3    (),
-    .SBDATO2    (),
-    .SBDATO1    (),
-    .SBDATO0    (),
-    .SBACKO     (),
-    .SPIIRQ     (),
-    .SPIWKUP    ()
-  );
-
-  // ============================================================================
-  // SB_IO for dedicated SPI pins - required on UP5K after SB_SPI is disabled
-  // ============================================================================
-  // Without SB_IO, plain input/output on pins 14/17 does not work reliably
-  // after the SB_SPI hard IP output enables are deasserted.
-  wire spi_mosi_internal;  // from bootloader core -> flash
-  wire spi_miso_internal;  // from flash -> bootloader core
-
-  SB_IO #(
-    .PIN_TYPE(6'b101001),  // tristate output + simple input
-    .PULLUP(1'b0)
-  ) spi_mosi_iob (
-    .PACKAGE_PIN   (pin_spi_mosi),
-    .OUTPUT_ENABLE (1'b1),
-    .D_OUT_0       (spi_mosi_internal),
-    .D_IN_0        ()
-  );
-
-  SB_IO #(
-    .PIN_TYPE(6'b101001),  // tristate output + simple input
-    .PULLUP(1'b1)
-  ) spi_miso_iob (
-    .PACKAGE_PIN   (pin_spi_miso),
-    .OUTPUT_ENABLE (1'b0),
-    .D_OUT_0       (1'b0),
-    .D_IN_0        (spi_miso_internal)
-  );
+  // The iCE40 UP5K has an SB_SPI hard block on these pads, but if we do NOT
+  // instantiate it, the pads are available as regular GPIO - same approach as
+  // the Fomu (also UP5K) bootloader.  Instantiating SB_SPI (even "disabled")
+  // connects its output enables to the pads and creates bus contention.
 
   // ============================================================================
   // PLL: 12 MHz -> 48 MHz
@@ -312,7 +226,13 @@ module bootloader (
   // BOOT pulse triggers the reconfig
   wire boot_from_bootloader;     // driven by tinyfpga_bootloader (timeout or USB cmd)
 
-  wire boot = boot_from_bootloader || bypass_trigger || autoboot_trigger;
+  // When stay_in_bootloader is set, ignore the core's internal timeout.
+  // The core also fires boot_from_bootloader on a USB "boot" command from
+  // tinyprog - we still want that, but can't distinguish here. Acceptable
+  // trade-off: with btn_down held, tinyprog "boot" command also won't work.
+  // In practice, tinyprog always programs then boots, so if btn_down is held
+  // the user explicitly wants to stay.
+  wire boot = (!stay_in_bootloader && boot_from_bootloader) || bypass_trigger || autoboot_trigger;
 
   SB_WARMBOOT warmboot_inst (
     .S1   (1'b0),
@@ -369,9 +289,9 @@ module bootloader (
 
     .led       (),              // LED now driven by our 3-LED breather
 
-    .spi_miso  (spi_miso_internal),
+    .spi_miso  (pin_spi_miso),
     .spi_cs    (pin_spi_cs),
-    .spi_mosi  (spi_mosi_internal),
+    .spi_mosi  (pin_spi_mosi),
     .spi_sck   (pin_spi_sck),
 
     .boot      (boot_from_bootloader)
