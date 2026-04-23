@@ -31,7 +31,9 @@ module bootloader (
   inout  pin_usbn,          // USB D- (pin 38, IOT_50b)
   output pin_usb_det,       // USB_DET (pin 37, IOT_36b) - high enables 1k5 pull-up on D+
 
-  input  pin_btn_ok,        // btn_ok, active low with external pull-up
+  input  pin_btn_ok,        // btn_ok, active low - skip to user bitstream 1
+  input  pin_btn_left,      // btn_left, active low - skip to user bitstream 2
+  input  pin_btn_right,     // btn_right, active low - skip to user bitstream 3
   input  pin_btn_down,      // btn_down, active low - hold to stay in bootloader
 
   output pin_led_index,     // white LED index  finger (pin 39)
@@ -120,17 +122,28 @@ module bootloader (
   // No debounce needed: button is either held during power-on/reset or not,
   // and PLL lock time (~100 µs) already provides a stable sampling point.
   reg bypass_sampled = 0;
-  reg bypass_trigger = 0;
+  // 0 = no bypass, 1 = slot1, 2 = slot2, 3 = slot3
+  reg [1:0] bypass_slot = 2'b00;
+  wire bypass_trigger = (bypass_slot != 2'b00);
   reg stay_in_bootloader = 0;    // btn_down held at boot -> inhibit autoboot
 
   always @(posedge clk) begin
     if (reset) begin
       bypass_sampled     <= 0;
-      bypass_trigger     <= 0;
+      bypass_slot        <= 2'b00;
       stay_in_bootloader <= 0;
     end else if (!bypass_sampled) begin
-      bypass_sampled     <= 1;
-      bypass_trigger     <= !pin_btn_ok;    // active low: pressed = go to user
+      bypass_sampled <= 1;
+      // Priority: btn_ok (slot1) > btn_left (slot2) > btn_right (slot3)
+      if (!pin_btn_ok)
+        bypass_slot <= 2'b01;
+      else if (!pin_btn_left)
+        bypass_slot <= 2'b10;
+      else if (!pin_btn_right)
+        bypass_slot <= 2'b11;
+      else
+        bypass_slot <= 2'b00;
+
       stay_in_bootloader <= !pin_btn_down;  // active low: pressed = stay in BL
     end
   end
@@ -222,8 +235,10 @@ module bootloader (
   // ============================================================================
   // SB_WARMBOOT - interface to multiboot
   // ============================================================================
-  // S1=0, S0=1 -> selects image slot 1 (user design)
-  // BOOT pulse triggers the reconfig
+  // SB_WARMBOOT - interface to multiboot
+  // S1/S0 select which slot to boot.  We sample button state at reset to
+  // decide whether to warmboot to slot 1..3.  If no bypass button was
+  // pressed, the default target is slot 1.
   wire boot_from_bootloader;     // driven by tinyfpga_bootloader (timeout or USB cmd)
 
   // When stay_in_bootloader is set, ignore the core's internal timeout.
@@ -234,9 +249,13 @@ module bootloader (
   // the user explicitly wants to stay.
   wire boot = (!stay_in_bootloader && boot_from_bootloader) || bypass_trigger || autoboot_trigger;
 
+  // Select warmboot slot: if a bypass button was sampled use that slot,
+  // otherwise default to slot 1 (2'b01).
+  wire [1:0] warmboot_sel = (bypass_slot != 2'b00) ? bypass_slot : 2'b01;
+
   SB_WARMBOOT warmboot_inst (
-    .S1   (1'b0),
-    .S0   (1'b1),
+    .S1   (warmboot_sel[1]),
+    .S0   (warmboot_sel[0]),
     .BOOT (boot)
   );
 

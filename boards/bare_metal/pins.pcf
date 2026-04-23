@@ -9,8 +9,14 @@ set_io -nowarn pin_usbp         42    # IOT_51a  - USB D+
 set_io -nowarn pin_usbn         38    # IOT_50b  - USB D-
 set_io -nowarn pin_usb_det      37    # IOT_36b  - USB_DET, active-high enables 1k5 pull-up on D+
 
-# btn_ok - skip bootloader, jump to user bitstream
+# btn_ok - skip bootloader, jump to user bitstream 1
 set_io -nowarn pin_btn_ok       23    # IOT_37a
+
+# btn_left - skip bootloader, jump to user bitstream 2
+set_io -nowarn pin_btn_left     44    # IOB_3b_G6
+
+# btn_left - skip bootloader, jump to user bitstream 3
+set_io -nowarn pin_btn_right    10    # IOB_18a
 
 # btn_down - stay in bootloader even when not enumerated by host
 set_io -nowarn pin_btn_down     11    # IOB_20a

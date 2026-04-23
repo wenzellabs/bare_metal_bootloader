@@ -12,12 +12,16 @@ COMMON   = ../../common
 # All source files
 SRC      = $(PROJ).v $(wildcard $(COMMON)/*.v)
 
-USER_BITSTREAM ?= bootloader_copy.bin
+# Support up to three user bitstreams (slots 1..3). By default use the
+# placeholder copy of the bootloader so all slots contain something.
+USER_BITSTREAM_1 ?= bootloader_copy.bin
+USER_BITSTREAM_2 ?= bootloader_copy.bin
+USER_BITSTREAM_3 ?= bootloader_copy.bin
 
 # flash memory map
 
 # 0x000_0000 - 0x000_009f =160b, multiboot header, slot table
-# 0x000_00a0 - 0x001_ffff ~124kB, slot 0, bare_metal_bootloader
+# 0x000_00a0 - 0x001_efff ~124kB, slot 0, bare_metal_bootloader
 # 0x001_f000 - 0x001_ffff =4kB, bootmetadata
 # 0x002_0000 - 0x003_ffff =128kB, slot 1, user bitstream, hackerstacker_demo by default
 # 0x004_0000 - 0x005_ffff =128kB, slot 2, transputers anyone?
@@ -49,7 +53,10 @@ META_ADDR = 0x1F000
 # After icemulti, inject minified bootmeta.json at META_ADDR.
 multiboot.bin: $(PROJ).bin bootmeta.json
 	cp $(PROJ).bin bootloader_copy.bin
-	icemulti -v -o $@ -a$(ALIGN) -p0 bootloader.bin $(USER_BITSTREAM)
+	# Build a multiboot image with the bootloader (slot 0) followed by up to
+	# three user bitstreams (slots 1..3). Defaults point to the placeholder
+	# copy so the image is valid even if you don't provide real user bitfiles.
+	icemulti -v -o $@ -a$(ALIGN) -p0 bootloader.bin $(USER_BITSTREAM_1) $(USER_BITSTREAM_2) $(USER_BITSTREAM_3)
 	python3 -c "\
 import json; \
 d = json.load(open('bootmeta.json')); \
