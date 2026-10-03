@@ -5,7 +5,7 @@ import struct
 import time
 
 from functools import reduce
-from pkg_resources import get_distribution, DistributionNotFound
+from importlib.metadata import PackageNotFoundError, version
 
 import jsonmerge
 import serial
@@ -16,8 +16,8 @@ from tqdm import tqdm
 from .data_tables import bit_reverse_table
 
 try:
-    __version__ = get_distribution(__name__).version
-except DistributionNotFound:
+    __version__ = version(__name__)
+except PackageNotFoundError:
     # package is not installed
     __version__ = "unknown"
 
