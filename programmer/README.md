@@ -89,6 +89,33 @@ tinyprog --id e5 --program "..\boards\TinyFPGA_BX\fw.bin"
 ```
 
 
+## Installation
+
+run
+```
+git clone https://codeberg.org/wenzellabs/bare_metal_bootloader.git
+cd bare_metal_bootloader
+cd programmer
+```
+then, either, for a systemwide installation for all users run
+
+**a)**
+```
+sudo python setup.py install
+```
+or to install for your user only, run
+
+**b)**
+```
+python setup.py install --local
+```
+and add the path `~/.local/bin` to your `PATH`.
+e.g.
+```
+export PATH="${HOME}/.local/bin:${PATH}"
+```
+in your `~/.bashrc` or `~/.zshrc`
+
 ## Testing
 
 Tests have been removed for now pending refactoring of test methodology.
